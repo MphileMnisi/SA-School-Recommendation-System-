@@ -20,3 +20,8 @@ export interface SchoolRecommendation {
 export interface SubjectMarks {
     [subject: string]: number | null;
 }
+
+export interface ChatMessage {
+    role: 'user' | 'model' | 'loading' | 'error';
+    content: string;
+}

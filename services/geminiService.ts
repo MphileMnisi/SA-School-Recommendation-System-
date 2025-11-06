@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Chat } from "@google/genai";
 import type { SchoolRecommendation, SubjectMarks } from "../types";
 
 // FIX: Aligned with coding guidelines to use process.env.API_KEY directly.
@@ -112,5 +112,35 @@ export const getSchoolRecommendations = async (subjectMarks: SubjectMarks, avera
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     throw new Error("Failed to get recommendations. The AI model may be temporarily unavailable. Please try again later.");
+  }
+};
+
+let chat: Chat | null = null;
+
+async function initializeChat(): Promise<Chat> {
+  if (chat) {
+    return chat;
+  }
+  
+  const newChat = ai.chats.create({
+    model: 'gemini-2.5-flash',
+    config: {
+      systemInstruction: 'You are a friendly and helpful career guidance counselor for South African high school students. You assist them with questions about careers, subject choices, and university applications. Keep your answers concise and easy to understand.',
+    },
+  });
+  chat = newChat;
+  return newChat;
+}
+
+export const sendMessageToBot = async (message: string): Promise<string> => {
+  try {
+    const chatSession = await initializeChat();
+    const response = await chatSession.sendMessage({ message });
+    return response.text;
+  } catch (error) {
+    console.error("Error sending message to bot:", error);
+    // Invalidate chat session on error
+    chat = null;
+    throw new Error("Failed to get a response from the bot. Please try again.");
   }
 };

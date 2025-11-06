@@ -1,11 +1,13 @@
-
 import React, { useState } from 'react';
 import type { SchoolRecommendation, SubjectMarks } from '../types';
 import { getSchoolRecommendations } from '../services/geminiService';
 import RecommendationCard from './RecommendationCard';
+import Chatbot from './Chatbot';
 import { LoaderIcon } from './icons/LoaderIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { GraduationCapIcon } from './icons/GraduationCapIcon';
+import { BotIcon } from './icons/BotIcon';
+
 
 interface SubjectEntry {
   id: number;
@@ -31,6 +33,7 @@ const DashboardPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<SchoolRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
 
   const validateMark = (mark: string) => {
     if (mark === '') return undefined; // No error if empty
@@ -44,6 +47,23 @@ const DashboardPage: React.FC = () => {
   const handleAverageMarkChange = (value: string) => {
     setAverageMark(value);
     setAverageMarkError(validateMark(value));
+  };
+
+  const handleCalculateAverage = () => {
+    const marks = subjects
+      .map(s => s.mark)
+      .filter(mark => mark.trim() !== '' && !validateMark(mark)) // Filter for valid, non-empty marks
+      .map(mark => Number(mark));
+
+    if (marks.length === 0) {
+      setAverageMarkError("No valid subject marks to calculate average.");
+      return;
+    }
+
+    const sum = marks.reduce((acc, current) => acc + current, 0);
+    const average = Math.round(sum / marks.length);
+    
+    handleAverageMarkChange(String(average));
   };
 
   const handleSubjectChange = (id: number, field: 'name' | 'mark', value: string) => {
@@ -131,12 +151,20 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-md sticky top-0 z-10">
+      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-md sticky top-0 z-20">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <GraduationCapIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
             <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">SA School Recommender</h1>
           </div>
+          <button
+              onClick={() => setIsChatbotOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Open Career Counselor Bot"
+            >
+              <BotIcon className="w-5 h-5" />
+              <span className="hidden sm:inline">Chat Bot</span>
+          </button>
         </nav>
       </header>
       <main className="container mx-auto p-4 md:p-8">
@@ -146,21 +174,6 @@ const DashboardPage: React.FC = () => {
             Enter your final marks for your high school subjects below. This will help us provide personalized recommendations for South African universities and colleges that match your academic profile.
           </p>
           <form onSubmit={handleSubmit} className="max-w-xl mx-auto">
-            <div className="mb-8">
-              <label htmlFor="averageMark" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 text-center">Your Overall Average Mark (%) (Optional)</label>
-              <input
-                id="averageMark"
-                type="number"
-                min="0"
-                max="100"
-                value={averageMark}
-                onChange={(e) => handleAverageMarkChange(e.target.value)}
-                placeholder="e.g. 82"
-                className={`w-full max-w-xs mx-auto block px-3 py-2 text-center bg-gray-50 dark:bg-gray-700 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${averageMarkError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-              />
-              {averageMarkError && <p className="text-red-500 text-xs mt-1 text-center">{averageMarkError}</p>}
-            </div>
-
             <div className="space-y-4 mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 text-center">Your Subject Marks (%)</label>
               {subjects.map((subject, index) => (
@@ -198,6 +211,34 @@ const DashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            <div className="mt-8 mb-6">
+              <label htmlFor="averageMark" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 text-center">Your Overall Average Mark (%)</label>
+              <div className="flex justify-center items-start gap-2">
+                  <div className="w-full max-w-xs">
+                      <input
+                          id="averageMark"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={averageMark}
+                          onChange={(e) => handleAverageMarkChange(e.target.value)}
+                          placeholder="e.g. 82"
+                          className={`w-full block px-3 py-2 text-center bg-gray-50 dark:bg-gray-700 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${averageMarkError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                      />
+                      {averageMarkError && <p className="text-red-500 text-xs mt-1 text-center">{averageMarkError}</p>}
+                  </div>
+                  <button
+                      type="button"
+                      onClick={handleCalculateAverage}
+                      className="px-4 py-2 border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/50 text-sm font-medium rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                      title="Calculate average from subject marks"
+                  >
+                      Calculate
+                  </button>
+              </div>
+            </div>
+            
             <div className="flex justify-center items-center gap-4 mb-8">
                  <button
                     type="button"
@@ -251,6 +292,7 @@ const DashboardPage: React.FC = () => {
           </div>
         )}
       </main>
+      {isChatbotOpen && <Chatbot onClose={() => setIsChatbotOpen(false)} />}
     </div>
   );
 };
