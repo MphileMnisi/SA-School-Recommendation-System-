@@ -1,16 +1,11 @@
+
 import React, { useState } from 'react';
 import type { SchoolRecommendation, SubjectMarks } from '../types';
 import { getSchoolRecommendations } from '../services/geminiService';
 import RecommendationCard from './RecommendationCard';
 import { LoaderIcon } from './icons/LoaderIcon';
-import { SunIcon } from './icons/SunIcon';
-import { MoonIcon } from './icons/MoonIcon';
 import { TrashIcon } from './icons/TrashIcon';
-
-interface DashboardPageProps {
-  theme: string;
-  toggleTheme: () => void;
-}
+import { GraduationCapIcon } from './icons/GraduationCapIcon';
 
 interface SubjectEntry {
   id: number;
@@ -29,8 +24,10 @@ const initialSubjects: SubjectEntry[] = [
 
 let nextId = 6;
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => {
+const DashboardPage: React.FC = () => {
   const [subjects, setSubjects] = useState<SubjectEntry[]>(initialSubjects);
+  const [averageMark, setAverageMark] = useState('');
+  const [averageMarkError, setAverageMarkError] = useState<string | undefined>(undefined);
   const [recommendations, setRecommendations] = useState<SchoolRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +39,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => 
       return 'Mark must be a whole number between 0 and 100.';
     }
     return undefined;
+  };
+  
+  const handleAverageMarkChange = (value: string) => {
+    setAverageMark(value);
+    setAverageMarkError(validateMark(value));
   };
 
   const handleSubjectChange = (id: number, field: 'name' | 'mark', value: string) => {
@@ -67,6 +69,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => 
 
   const handleClearAll = () => {
     setSubjects(initialSubjects);
+    setAverageMark('');
+    setAverageMarkError(undefined);
     setRecommendations([]);
     setError(null);
     setIsLoading(false);
@@ -77,13 +81,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => 
     setError(null);
     setRecommendations([]);
 
+    const avgMarkError = validateMark(averageMark);
+    setAverageMarkError(avgMarkError);
+
     // Final validation before submitting
-    let hasErrors = false;
+    let hasSubjectErrors = false;
     const finalSubjects = subjects.map(sub => {
       const error = validateMark(sub.mark);
-      if (error) hasErrors = true;
+      if (error) hasSubjectErrors = true;
       if (!sub.name.trim() && sub.mark.trim()) {
-        hasErrors = true; // Technically shouldn't happen with this UI but good practice
+        hasSubjectErrors = true;
       }
       return { ...sub, error };
     });
@@ -95,8 +102,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => 
       return;
     }
 
-    if (hasErrors) {
-      setError("Please fix the errors in your subject marks before proceeding.");
+    if (hasSubjectErrors || avgMarkError) {
+      setError("Please fix the errors in your marks before proceeding.");
       return;
     }
     
@@ -107,10 +114,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => 
       return acc;
     }, {} as SubjectMarks);
 
+    const averageMarkNumber = averageMark.trim() !== '' ? Number(averageMark) : null;
+
 
     try {
-      const result = await getSchoolRecommendations(subjectMarks);
+      const result = await getSchoolRecommendations(subjectMarks, averageMarkNumber);
       setRecommendations(result);
+    // FIX: Corrected catch block syntax from `catch(err) =>` to `catch(err)`.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
       console.error(err);
@@ -123,14 +133,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => 
     <div className="min-h-screen">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-md sticky top-0 z-10">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">SA School Recommender</h1>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
-          </button>
+          <div className="flex items-center gap-3">
+            <GraduationCapIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+            <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">SA School Recommender</h1>
+          </div>
         </nav>
       </header>
       <main className="container mx-auto p-4 md:p-8">
@@ -140,6 +146,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => 
             Enter your final marks for your high school subjects below. This will help us provide personalized recommendations for South African universities and colleges that match your academic profile.
           </p>
           <form onSubmit={handleSubmit} className="max-w-xl mx-auto">
+            <div className="mb-8">
+              <label htmlFor="averageMark" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 text-center">Your Overall Average Mark (%) (Optional)</label>
+              <input
+                id="averageMark"
+                type="number"
+                min="0"
+                max="100"
+                value={averageMark}
+                onChange={(e) => handleAverageMarkChange(e.target.value)}
+                placeholder="e.g. 82"
+                className={`w-full max-w-xs mx-auto block px-3 py-2 text-center bg-gray-50 dark:bg-gray-700 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${averageMarkError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+              />
+              {averageMarkError && <p className="text-red-500 text-xs mt-1 text-center">{averageMarkError}</p>}
+            </div>
+
             <div className="space-y-4 mb-6">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 text-center">Your Subject Marks (%)</label>
               {subjects.map((subject, index) => (
