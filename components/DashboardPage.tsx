@@ -4,11 +4,7 @@ import { getSchoolRecommendations } from '../services/geminiService';
 import RecommendationCard from './RecommendationCard';
 import { LoaderIcon } from './icons/LoaderIcon';
 
-interface DashboardPageProps {
-  onLogout: () => void;
-}
-
-const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
+const DashboardPage: React.FC = () => {
   const [averageMark, setAverageMark] = useState<string>('');
   const [recommendations, setRecommendations] = useState<SchoolRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,17 +54,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-800">
-      <header className="bg-white dark:bg-gray-900 shadow-md">
-        <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+    <div className="min-h-screen">
+      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-md sticky top-0 z-10">
+        <nav className="container mx-auto px-6 py-4 flex justify-center items-center">
           <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">SA School Recommender</h1>
-          <button onClick={onLogout} className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
-            Logout
-          </button>
         </nav>
       </header>
       <main className="container mx-auto p-4 md:p-8">
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-xl shadow-lg mb-8">
+        <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-8 rounded-xl shadow-lg mb-8">
           <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Find Your Ideal School</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6">Enter your overall average mark (%) below to get personalized school recommendations.</p>
           <form onSubmit={handleSubmit}>
@@ -106,7 +99,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
         {error && <div className="text-center p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">{error}</div>}
         
         {isLoading && (
-            <div className="text-center py-10">
+            <div className="text-center py-10 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg">
                 <div role="status" className="inline-block">
                     <LoaderIcon className="w-12 h-12 text-indigo-500 animate-spin"/>
                     <span className="sr-only">Loading...</span>
@@ -118,7 +111,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
 
         {!isLoading && recommendations.length > 0 && (
           <div>
-            <h3 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">Your Recommendations</h3>
+            <h3 className="text-3xl font-bold text-center mb-8 text-white drop-shadow-md">Your Recommendations</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
               {recommendations.map((rec, index) => (
                 <RecommendationCard key={index} recommendation={rec} />

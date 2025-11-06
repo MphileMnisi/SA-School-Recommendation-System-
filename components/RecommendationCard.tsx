@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { SchoolRecommendation } from '../types';
 
@@ -21,7 +20,7 @@ const getInstitutionTypeColor = (type: string) => {
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({ recommendation }) => {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 flex flex-col">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 flex flex-col">
       <div className="p-6 flex-grow">
         <div className="flex justify-between items-start mb-4">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">{recommendation.institutionName}</h3>
@@ -34,7 +33,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ recommendation 
             <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Recommended Courses & Requirements:</h4>
             <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
                 {recommendation.recommendedCourses.map((course, i) => (
-                    <div key={i} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div key={i} className="p-3 bg-gray-50/70 dark:bg-gray-800/70 rounded-lg">
                         <p className="font-bold text-gray-800 dark:text-gray-100">{course.courseName}</p>
                         {course.apsScore && <p className="text-sm text-gray-600 dark:text-gray-400">Min APS: {course.apsScore}</p>}
                         <ul className="mt-2 list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
