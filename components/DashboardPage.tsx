@@ -1,49 +1,115 @@
 import React, { useState } from 'react';
-import type { SchoolRecommendation } from '../types';
+import type { SchoolRecommendation, SubjectMarks } from '../types';
 import { getSchoolRecommendations } from '../services/geminiService';
 import RecommendationCard from './RecommendationCard';
 import { LoaderIcon } from './icons/LoaderIcon';
+import { SunIcon } from './icons/SunIcon';
+import { MoonIcon } from './icons/MoonIcon';
+import { TrashIcon } from './icons/TrashIcon';
 
-const DashboardPage: React.FC = () => {
-  const [averageMark, setAverageMark] = useState<string>('');
+interface DashboardPageProps {
+  theme: string;
+  toggleTheme: () => void;
+}
+
+interface SubjectEntry {
+  id: number;
+  name: string;
+  mark: string;
+  error?: string;
+}
+
+const initialSubjects: SubjectEntry[] = [
+    { id: 1, name: 'Mathematics', mark: '', error: '' },
+    { id: 2, name: 'Physical Sciences', mark: '', error: '' },
+    { id: 3, name: 'English FAL', mark: '', error: '' },
+    { id: 4, name: 'Life Orientation', mark: '', error: '' },
+    { id: 5, name: 'isiXhosa HL', mark: '', error: '' },
+];
+
+let nextId = 6;
+
+const DashboardPage: React.FC<DashboardPageProps> = ({ theme, toggleTheme }) => {
+  const [subjects, setSubjects] = useState<SubjectEntry[]>(initialSubjects);
   const [recommendations, setRecommendations] = useState<SchoolRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleMarkChange = (value: string) => {
-    // Allow empty string to clear input, otherwise validate
-    if (value === '') {
-        setAverageMark('');
-        return;
+  const validateMark = (mark: string) => {
+    if (mark === '') return undefined; // No error if empty
+    const num = Number(mark);
+    if (isNaN(num) || num < 0 || num > 100 || !Number.isInteger(num)) {
+      return 'Mark must be a whole number between 0 and 100.';
     }
-    const mark = parseInt(value, 10);
-    // Only update state if the value is a valid number within the range 0-100
-    if (!isNaN(mark) && mark >= 0 && mark <= 100 && value.length <= 3) {
-        setAverageMark(value);
-    }
+    return undefined;
+  };
+
+  const handleSubjectChange = (id: number, field: 'name' | 'mark', value: string) => {
+    setSubjects(subjects.map(sub => {
+      if (sub.id === id) {
+        if (field === 'mark') {
+          const error = validateMark(value);
+          return { ...sub, mark: value, error: error };
+        }
+        return { ...sub, [field]: value };
+      }
+      return sub;
+    }));
+  };
+
+  const handleAddSubject = () => {
+    setSubjects([...subjects, { id: nextId++, name: '', mark: '' }]);
+  };
+
+  const handleRemoveSubject = (id: number) => {
+    setSubjects(subjects.filter(sub => sub.id !== id));
+  };
+
+  const handleClearAll = () => {
+    setSubjects(initialSubjects);
+    setRecommendations([]);
+    setError(null);
+    setIsLoading(false);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
     setRecommendations([]);
 
-    if (averageMark.trim() === '') {
-        setError("Please enter your average mark.");
-        setIsLoading(false);
-        return;
-    }
-    
-    const markValue = parseInt(averageMark, 10);
-     if (isNaN(markValue) || markValue < 0 || markValue > 100) {
-        setError("Please enter a valid average mark between 0 and 100.");
-        setIsLoading(false);
-        return;
+    // Final validation before submitting
+    let hasErrors = false;
+    const finalSubjects = subjects.map(sub => {
+      const error = validateMark(sub.mark);
+      if (error) hasErrors = true;
+      if (!sub.name.trim() && sub.mark.trim()) {
+        hasErrors = true; // Technically shouldn't happen with this UI but good practice
+      }
+      return { ...sub, error };
+    });
+    setSubjects(finalSubjects);
+
+    const filledSubjects = subjects.filter(s => s.name.trim() && s.mark.trim());
+    if (filledSubjects.length < 3) {
+      setError("Please provide at least 3 subjects and their marks.");
+      return;
     }
 
+    if (hasErrors) {
+      setError("Please fix the errors in your subject marks before proceeding.");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    const subjectMarks: SubjectMarks = filledSubjects.reduce((acc, sub) => {
+      acc[sub.name] = Number(sub.mark);
+      return acc;
+    }, {} as SubjectMarks);
+
+
     try {
-      const result = await getSchoolRecommendations(markValue);
+      const result = await getSchoolRecommendations(subjectMarks);
       setRecommendations(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -56,32 +122,76 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm shadow-md sticky top-0 z-10">
-        <nav className="container mx-auto px-6 py-4 flex justify-center items-center">
+        <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">SA School Recommender</h1>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
+          </button>
         </nav>
       </header>
       <main className="container mx-auto p-4 md:p-8">
         <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-8 rounded-xl shadow-lg mb-8">
-          <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-white">Find Your Ideal School</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">Enter your overall average mark (%) below to get personalized school recommendations.</p>
-          <form onSubmit={handleSubmit}>
-            <div className="max-w-xs mx-auto mb-6">
-                 <div>
-                  <label htmlFor="averageMark" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 text-center">Your Average Mark</label>
+          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white text-center">Find Your Ideal School</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-8 text-center max-w-2xl mx-auto">
+            Enter your final marks for your high school subjects below. This will help us provide personalized recommendations for South African universities and colleges that match your academic profile.
+          </p>
+          <form onSubmit={handleSubmit} className="max-w-xl mx-auto">
+            <div className="space-y-4 mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 text-center">Your Subject Marks (%)</label>
+              {subjects.map((subject, index) => (
+                <div key={subject.id} className="grid grid-cols-1 md:grid-cols-[1fr_120px_40px] gap-2 items-start">
                   <input
-                    id="averageMark"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={averageMark}
-                    onChange={(e) => handleMarkChange(e.target.value)}
-                    placeholder="e.g. 75"
-                    className="w-full px-3 py-2 text-center text-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    type="text"
+                    value={subject.name}
+                    onChange={(e) => handleSubjectChange(subject.id, 'name', e.target.value)}
+                    placeholder="Subject Name"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     required
-                    aria-describedby="mark-description"
                   />
-                  <p id="mark-description" className="sr-only">Enter your average mark as a percentage from 0 to 100.</p>
+                  <div>
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={subject.mark}
+                        onChange={(e) => handleSubjectChange(subject.id, 'mark', e.target.value)}
+                        placeholder="e.g. 75"
+                        className={`w-full px-3 py-2 text-center bg-gray-50 dark:bg-gray-700 border rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${subject.error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                        required
+                    />
+                     {subject.error && <p className="text-red-500 text-xs mt-1">{subject.error}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSubject(subject.id)}
+                    className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                    aria-label="Remove subject"
+                    disabled={subjects.length <= 1}
+                  >
+                    <TrashIcon className="w-6 h-6"/>
+                  </button>
                 </div>
+              ))}
+            </div>
+            <div className="flex justify-center items-center gap-4 mb-8">
+                 <button
+                    type="button"
+                    onClick={handleAddSubject}
+                    className="px-4 py-2 border border-dashed border-gray-400 dark:border-gray-500 text-sm font-medium rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                    + Add Subject
+                </button>
+                <button
+                    type="button"
+                    onClick={handleClearAll}
+                    className="px-4 py-2 border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/50 text-sm font-medium rounded-md text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900"
+                >
+                    Clear All
+                </button>
             </div>
             <div className="text-center">
               <button
