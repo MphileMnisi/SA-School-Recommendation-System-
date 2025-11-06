@@ -1,0 +1,5 @@
+{
+  "name": "SA School Recommender",
+  "description": "An intelligent system that recommends South African tertiary institutions and colleges to learners based on their average marks, powered by Gemini.",
+  "requestFramePermissions": []
+}
